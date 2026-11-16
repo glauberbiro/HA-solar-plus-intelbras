@@ -26,6 +26,9 @@ if TYPE_CHECKING:
 
     from homeassistant.helpers.typing import StateType
 
+# Microinverters report one DC power value per MPPT input ("module_N").
+MAX_MPPT_INPUTS = 4
+
 
 @dataclass(frozen=True, kw_only=True)
 class SolarPlusSensorEntityDescription(SensorEntityDescription):
@@ -246,6 +249,25 @@ PLANT_SENSORS: tuple[SolarPlusSensorEntityDescription, ...] = (
 )
 
 
+def _module_power(index: int) -> Callable[[dict], StateType]:
+    """Return an accessor for the DC power of one MPPT/module input (W)."""
+
+    def _value(row: dict) -> StateType:
+        raw = (row.get("parameters") or {}).get(f"module_{index}")
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return None
+
+    return _value
+
+
+def mppt_indexes(row: dict) -> list[int]:
+    """Return the MPPT/module inputs reported by an inverter row."""
+    parameters = row.get("parameters") or {}
+    return [i for i in range(1, MAX_MPPT_INPUTS + 1) if f"module_{i}" in parameters]
+
+
 INVERTER_SENSORS: tuple[SolarPlusSensorEntityDescription, ...] = (
     SolarPlusSensorEntityDescription(
         key="inverter_temperature",
@@ -294,6 +316,20 @@ INVERTER_SENSORS: tuple[SolarPlusSensorEntityDescription, ...] = (
         value_fn=lambda row: _parse_dt(row.get("last_record")),
     ),
 )
+
+
+MPPT_SENSORS: dict[int, SolarPlusSensorEntityDescription] = {
+    index: SolarPlusSensorEntityDescription(
+        key=f"inverter_mppt_{index}_power",
+        translation_key=f"inverter_mppt_{index}_power",
+        device_class=SensorDeviceClass.POWER,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=_module_power(index),
+    )
+    for index in range(1, MAX_MPPT_INPUTS + 1)
+}
 
 
 DATALOGGER_SENSORS: tuple[SolarPlusSensorEntityDescription, ...] = (

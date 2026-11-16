@@ -12,8 +12,10 @@ from .entity import SolarPlusIntelbrasEntity
 from .sensor_descriptions import (
     DATALOGGER_SENSORS,
     INVERTER_SENSORS,
+    MPPT_SENSORS,
     PLANT_SENSORS,
     SolarPlusSensorEntityDescription,
+    mppt_indexes,
 )
 
 if TYPE_CHECKING:
@@ -52,6 +54,10 @@ def build_row_entities(
     entities: list[SensorEntity] = [
         SolarPlusIntelbrasInverterSensor(coordinator, description, row_id) for description in INVERTER_SENSORS
     ]
+    row = next((r for r in _rows(coordinator.data) if r.get("id") == row_id), {})
+    entities.extend(
+        SolarPlusIntelbrasInverterSensor(coordinator, MPPT_SENSORS[index], row_id) for index in mppt_indexes(row)
+    )
     entities.extend(
         SolarPlusIntelbrasDataloggerSensor(coordinator, description, row_id) for description in DATALOGGER_SENSORS
     )

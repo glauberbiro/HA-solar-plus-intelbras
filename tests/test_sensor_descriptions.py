@@ -56,3 +56,15 @@ def test_weather_sensors_read_plant_weather(coordinator_data: dict) -> None:
     assert _by_key(PLANT_SENSORS, "weather_temperature").value_fn(coordinator_data) == 31.4  # noqa: PLR2004
     assert _by_key(PLANT_SENSORS, "weather_humidity").value_fn(coordinator_data) == 63  # noqa: PLR2004
     assert _by_key(PLANT_SENSORS, "weather_condition").value_fn(coordinator_data) == "Partly cloudy"
+
+
+def test_mppt_power_sensors_read_module_parameters() -> None:
+    from custom_components.solar_plus_intelbras.sensor_descriptions import MPPT_SENSORS, mppt_indexes
+
+    row = {"parameters": {"module_1": "121.60", "module_2": 125, "module_3": "", "dev_code": 1}}
+    assert mppt_indexes(row) == [1, 2, 3]
+    assert MPPT_SENSORS[1].value_fn(row) == 121.6
+    assert MPPT_SENSORS[2].value_fn(row) == 125.0
+    assert MPPT_SENSORS[3].value_fn(row) is None
+    assert mppt_indexes({}) == []
+    assert mppt_indexes({"parameters": None}) == []
